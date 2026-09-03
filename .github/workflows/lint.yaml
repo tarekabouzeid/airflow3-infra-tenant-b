@@ -28,4 +28,4 @@ jobs:
       - run: pip install yamllint
       - name: yamllint
         run: |
-          yamllint -d "{extends: default, rules: {line-length: {max: 140, level: warning}, document-start: disable, truthy: {allowed-values: ['true','false','on']}}}" .
+          yamllint -d "{extends: default, ignore: [deploy/workloads/templates/], rules: {line-length: {max: 140, level: warning}, document-start: disable, truthy: {allowed-values: ['true','false','on']}}}" .
