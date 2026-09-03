@@ -1,0 +1,31 @@
+name: dag-validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      AIRFLOW_VERSION: "3.1.7"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install Airflow + providers (pinned via Airflow's own constraints file)
+        run: |
+          PYTHON_VERSION=$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+          pip install --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt" \
+            "apache-airflow==${AIRFLOW_VERSION}" \
+            apache-airflow-providers-cncf-kubernetes \
+            apache-airflow-providers-hashicorp \
+            pytest ruff
+      - name: ruff check dags/
+        run: ruff check dags/
+      - name: DagBag import check
+        env:
+          AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+        run: pytest tests/test_dags_import.py -v

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: workloads
+description: >
+  Tenant-owned: a SecretStore + ExternalSecret pulling this tenant's workload secrets out of
+  Vault, deployed into "<tenant>-workloads" on every cluster this tenant targets. Deployed
+  directly (single-source Application) by platform/bootstrap/appset-tenant-workloads.yaml in the
+  platform repo - the tenant AppProject already restricts this chart to its own namespace, so
+  owning it directly (rather than routing through the platform chart) is safe.
+type: application
+version: 0.1.0
+appVersion: "1.0"

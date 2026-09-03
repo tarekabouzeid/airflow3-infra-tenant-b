@@ -1,0 +1,28 @@
+# Overrides ONLY - merged UNDERNEATH the platform's own wiring values (Vault, ServiceAccount,
+# DAG source, executor) in platform/bootstrap/appset-tenant-airflow.yaml on the platform repo, so
+# nothing here can override that wiring even by accident. Safe to change: image tag, resource
+# requests/limits, replica counts.
+airflow:
+  images:
+    airflow:
+      tag: 3.1.7-hashicorp-1
+
+  scheduler:
+    resources:
+      requests: {cpu: 100m, memory: 384Mi}
+      limits: {memory: 768Mi}
+
+  dagProcessor:
+    resources:
+      requests: {cpu: 100m, memory: 384Mi}
+      limits: {memory: 768Mi}
+
+  triggerer:
+    resources:
+      requests: {cpu: 50m, memory: 256Mi}
+      limits: {memory: 512Mi}
+
+  apiServer:
+    resources:
+      requests: {cpu: 100m, memory: 384Mi}
+      limits: {memory: 768Mi}

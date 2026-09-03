@@ -1,0 +1,7 @@
+tenant: tenant-b
+serviceAccountName: tenant-b-workload-runner
+vault:
+  address: http://af-mgmt-control-plane:8200
+  mountPoint: tenant-b
+  authMountPath: kubernetes-work-b
+  esoRole: tenant-b-eso
