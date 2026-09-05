@@ -37,7 +37,7 @@ with DAG(
         task_id="submit_local",
         namespace=NAMESPACE,
         application_file="spark/spark_pi.yaml",
-        params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "suffix": "local-{{ ts_nodash | lower }}"},
+        params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "suffix": "local"},
         do_xcom_push=True,
     )
     wait_local = SparkKubernetesSensor(
@@ -50,7 +50,7 @@ with DAG(
         task_id="submit_remote",
         namespace=NAMESPACE,
         application_file="spark/spark_pi.yaml",
-        params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "suffix": "remote-{{ ts_nodash | lower }}"},
+        params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "suffix": "remote"},
         do_xcom_push=True,
         kubernetes_conn_id="k8s_remote",
     )
