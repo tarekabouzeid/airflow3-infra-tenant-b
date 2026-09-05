@@ -8,6 +8,7 @@ For the local tasks we deliberately pass no connection at all: KubernetesHook's 
 the literal "kubernetes_default" conn id is an empty Connection, which resolves to in-cluster
 config automatically (verified against the installed provider's source, not assumed).
 """
+import uuid
 from datetime import datetime, timezone
 
 from airflow import DAG
@@ -21,6 +22,14 @@ from airflow.providers.cncf.kubernetes.sensors.spark_kubernetes import (
 TENANT = "tenant-b"
 NAMESPACE = f"{TENANT}-workloads"
 SERVICE_ACCOUNT = f"{TENANT}-workload-runner"
+
+# Computed once at DAG-parse time, in plain Python - not a Jinja macro like {{ ts_nodash }}.
+# operators/spark_kubernetes.py's own SparkApplication-name rendering context only has `params`
+# in scope, not the full task Jinja context (confirmed locally: {{ ts_nodash }} in the template
+# raised UndefinedError there, even though it renders fine elsewhere). A params dict VALUE that
+# itself contains {{ ... }} is also not re-rendered - it lands in the k8s object name literally,
+# which then gets rejected (only alphanumeric/dashes/dots/underscores allowed).
+_RUN_SUFFIX = uuid.uuid4().hex[:8]
 
 with DAG(
     dag_id="it_spark",
@@ -37,7 +46,7 @@ with DAG(
         task_id="submit_local",
         namespace=NAMESPACE,
         application_file="spark/spark_pi.yaml",
-        params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "suffix": "local"},
+        params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "suffix": f"local-{_RUN_SUFFIX}"},
         do_xcom_push=True,
     )
     wait_local = SparkKubernetesSensor(
@@ -50,7 +59,7 @@ with DAG(
         task_id="submit_remote",
         namespace=NAMESPACE,
         application_file="spark/spark_pi.yaml",
-        params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "suffix": "remote"},
+        params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "suffix": f"remote-{_RUN_SUFFIX}"},
         do_xcom_push=True,
         kubernetes_conn_id="k8s_remote",
     )
