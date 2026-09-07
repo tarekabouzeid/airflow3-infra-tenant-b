@@ -53,11 +53,18 @@ with DAG(
     # Airflow task sat "running" for 25+ minutes waiting on the sidecar). The application name is
     # already fully deterministic from LOCAL_APP_NAME/REMOTE_APP_NAME above, so there's no need to
     # recover it via XCom at all.
+    #
+    # delete_on_termination=False (default is True): SparkKubernetesOperator deletes the
+    # SparkApplication object itself the moment the job finishes. wait_local/wait_remote poll that
+    # same object afterward - with the default, they lose the race and 404 (confirmed locally:
+    # submit_* succeeding and the SparkApplication completing is not enough, the object has to
+    # still exist by the time the downstream sensor's own pod gets scheduled a few seconds later).
     submit_local = SparkKubernetesOperator(
         task_id="submit_local",
         namespace=NAMESPACE,
         application_file="spark/spark_pi.yaml",
         params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "suffix": f"local-{_RUN_SUFFIX}"},
+        delete_on_termination=False,
     )
     wait_local = SparkKubernetesSensor(
         task_id="wait_local",
@@ -70,6 +77,7 @@ with DAG(
         namespace=NAMESPACE,
         application_file="spark/spark_pi.yaml",
         params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "suffix": f"remote-{_RUN_SUFFIX}"},
+        delete_on_termination=False,
         kubernetes_conn_id="k8s_remote",
     )
     wait_remote = SparkKubernetesSensor(
