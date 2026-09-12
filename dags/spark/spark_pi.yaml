@@ -3,6 +3,15 @@ kind: SparkApplication
 metadata:
   name: it-spark-pi-{{ params.suffix }}-{{ run_id | replace(':', '-') | replace('+', '-') | replace('.', '-') | replace('_', '-') | lower }}
   namespace: {{ params.namespace }}
+  labels:
+    # Queue selection, same knob as the KubernetesPodOperator DAG - but note WHERE it goes: on the
+    # SparkApplication itself, not on the driver or executor pod templates. Kueue's
+    # SparkApplication integration reads it here and suspends the whole application until the
+    # driver AND every executor fit at once, then unsuspends it. That all-or-nothing admission is
+    # the gang scheduling, and it is cluster-wide policy rather than a tenant choice: there is no
+    # value for this label that turns it off, and no way to have a driver start while its
+    # executors wait for capacity.
+    kueue.x-k8s.io/queue-name: "{{ params.queue }}"
 spec:
   type: Scala
   mode: cluster

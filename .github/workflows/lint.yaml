@@ -3,7 +3,7 @@ name: lint
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, "claude/**"]
 
 jobs:
   helm-and-yaml:

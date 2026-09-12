@@ -30,6 +30,23 @@ Exactly three things — nothing else, by design:
    speculatively — this repo is an integration-test fixture for the platform, not a general
    scheduling surface.
 
+## Governance: what this repo can and cannot decide
+
+Every pod in `tenant-b-workloads` passes through Kueue (quota admission) and Kyverno (admission
+policy) before it starts. The single knob this repo holds is **which queue lane** a workload uses:
+the `kueue.x-k8s.io/queue-name` label, set to `high` (this tenant's guaranteed share) or `low`
+(opportunistic, evicted first). On a `KubernetesPodOperator` it goes in `labels=`; on a
+`SparkApplication` it goes on the SparkApplication's own `metadata.labels`, NOT on the driver or
+executor pod templates. Unlabelled workloads land in `low`.
+
+Everything else is cluster-wide and platform-owned, and cannot be changed from here: gang
+scheduling (a Spark job is admitted only when its driver and all executors fit at once, in both
+lanes), the size of each lane, the registry allowlist, per-container resource ceilings, which
+PriorityClasses may be named, Pod Security Standards, host ports, node pinning and Service types.
+Those are enforced at admission — a violating pod is rejected by the API server, not silently
+deprioritised — so a DAG that breaks one fails loudly at task runtime rather than at merge. See
+the platform repo's `docs/runbook-governance.md` for the full rule list.
+
 ## Hard rules
 
 1. **Never author an `Application` or `ApplicationSet` resource here.** The trust boundary is the
@@ -42,10 +59,18 @@ Exactly three things — nothing else, by design:
    exists.
 3. **Secrets never enter git.** Workload secrets are pulled from Vault via `deploy/workloads/`'s
    `ExternalSecret`, never hardcoded in values files or DAGs.
-4. **DAGs must import cleanly and stay in the two-DAG integration-test shape** —
+4. **Never set `priorityClassName` on a workload here.** The platform derives it from the queue
+   lane, so setting it by hand is at best redundant and at worst a lane/priority mismatch that
+   admission rejects. The only classes a tenant pod may name at all are `tenant-airflow`,
+   `tenant-workload-high` and `tenant-workload-low`.
+5. **A new image needs a platform change first.** The registry allowlist is platform-owned, and a
+   DAG referencing an image outside it is rejected at admission, not at merge. Allowed for tenant
+   workloads today: the platform's own registry, `apache/spark`, `busybox`, `alpine/git` and
+   `postgres` — each with an explicit, non-`:latest` tag.
+6. **DAGs must import cleanly and stay in the two-DAG integration-test shape** —
    `tests/test_dags_import.py` and `.github/workflows/dag-validate.yaml` enforce this in CI; run
    them (or trust CI) before considering a DAG change done.
-5. **This environment has no local Docker/KIND/Argo CD access.** GitHub Actions
+7. **This environment has no local Docker/KIND/Argo CD access.** GitHub Actions
    (`.github/workflows/lint.yaml`, `dag-validate.yaml`) is the verification loop here; the
    platform repo's `e2e-kind.yaml` is what actually deploys this repo's contents into a live
    cluster. Treat CI failure as ground truth, not a flake, unless proven otherwise.

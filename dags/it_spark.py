@@ -22,6 +22,16 @@ TENANT = "tenant-b"
 NAMESPACE = f"{TENANT}-workloads"
 SERVICE_ACCOUNT = f"{TENANT}-workload-runner"
 
+# Kueue lane for each submission, rendered into spark/spark_pi.yaml's metadata.labels as
+# kueue.x-k8s.io/queue-name. "high" draws on this tenant's guaranteed quota, "low" runs
+# opportunistically on borrowed idle capacity and is the first thing evicted. Split across the two
+# submissions below so one DAG run exercises both of this tenant's ClusterQueues.
+#
+# What this label does NOT control is gang scheduling, which is cluster-wide and platform-owned:
+# whichever lane is chosen, Kueue suspends the SparkApplication until the driver and ALL executors
+# fit at once. A Spark job here never half-starts with a driver holding capacity its executors are
+# still queueing for. See the platform repo's docs/runbook-governance.md.
+
 # SparkApplication object names are "it-spark-pi-{suffix}-{sanitized run_id}". run_id (not
 # ts_nodash/ds/ts) is the only per-run identifier guaranteed present: get_template_context()
 # (airflow.sdk.execution_time.task_runner) only adds ts_nodash and friends when
@@ -48,7 +58,7 @@ with DAG(
     start_date=datetime(2025, 1, 1, tzinfo=timezone.utc),
     default_args={"retries": 0},
     tags=["integration-test", TENANT],
-    params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT},
+    params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "queue": "high"},
 ) as dag:
     # do_xcom_push deliberately omitted (defaults to False): per the operator's own docstring, it
     # means "read /airflow/xcom/return.json from inside the pod via a sidecar container" - the
@@ -72,7 +82,12 @@ with DAG(
         task_id="submit_local",
         namespace=NAMESPACE,
         application_file="spark/spark_pi.yaml",
-        params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "suffix": "local"},
+        params={
+            "namespace": NAMESPACE,
+            "service_account": SERVICE_ACCOUNT,
+            "suffix": "local",
+            "queue": "high",
+        },
         delete_on_termination=False,
         random_name_suffix=False,
     )
@@ -86,7 +101,12 @@ with DAG(
         task_id="submit_remote",
         namespace=NAMESPACE,
         application_file="spark/spark_pi.yaml",
-        params={"namespace": NAMESPACE, "service_account": SERVICE_ACCOUNT, "suffix": "remote"},
+        params={
+            "namespace": NAMESPACE,
+            "service_account": SERVICE_ACCOUNT,
+            "suffix": "remote",
+            "queue": "low",
+        },
         delete_on_termination=False,
         random_name_suffix=False,
         kubernetes_conn_id="k8s_remote",

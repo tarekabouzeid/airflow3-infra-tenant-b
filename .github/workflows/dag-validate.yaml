@@ -3,7 +3,7 @@ name: dag-validate
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, "claude/**"]
 
 jobs:
   validate:
