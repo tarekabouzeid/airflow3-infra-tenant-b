@@ -50,9 +50,14 @@ metadata:
 ```
 
 Omit the label and the task runs in `low`. There is no way to opt out of queueing - the platform
-manages every workload in this namespace whether or not it carries a queue label - and the pod's
-scheduling `priorityClassName` is derived from this label by the platform, so the lane and the
-priority cannot be set to disagree.
+manages every workload in this namespace whether or not it carries a queue label - and Kueue's
+queueing priority (a `WorkloadPriorityClass`) is derived from this label by the platform, so the
+lane and the priority cannot be set to disagree.
+
+You do not need to set a pod `priorityClassName` at all, and normally should not. That is a
+separate, kube-scheduler-level setting; leaving it unset is fine and keeps your workloads below
+the platform's own components, which is intended. If you do set one it must be from the tenant
+range, and the platform enforces that at admission.
 
 ### What is not yours to set
 

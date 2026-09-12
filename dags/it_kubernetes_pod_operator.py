@@ -24,8 +24,8 @@ NAMESPACE = f"{TENANT}-workloads"
 # Omit the label entirely and the task lands in "low": the platform creates a LocalQueue literally
 # named "default" pointing at the low lane, which Kueue applies to anything unlabelled. There is
 # no way to opt OUT of queueing - the platform sets manageJobsWithoutQueueName on these namespaces
-# - and the PriorityClass is derived from this label by the platform, so the lane and the
-# scheduling priority cannot be set to disagree.
+# - and Kueue's own queueing priority (a WorkloadPriorityClass) is derived from this label by the
+# platform, so the lane and the queueing priority cannot be set to disagree.
 #
 # Everything else about how this task is scheduled - gang scheduling, how big each lane is,
 # preemption policy - is cluster-wide and platform-owned. See the platform repo's
